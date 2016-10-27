@@ -1,6 +1,6 @@
 
 //Objects
-//Pixel Buffer
+//Represents the pixels that will be drawn to the screen
 class PixelBuffer {
     constructor(height, width) {
         this.height = height;
@@ -49,6 +49,69 @@ class PixelBuffer {
         }
     }
 }
+
+//Stores viewer location
+class Viewer {
+    constructor(location){
+        this.location = location;
+    }
+
+    getLocation(){
+        return this.location;
+    }
+}
+
+class ViewPanel{
+    constructor(topLeft, bottomRight, pixelRows, pixelColumns){
+        //TODO
+    }
+
+    getCenter(row, column){
+        //TODO
+    }
+}
+
+class ClippingCube{
+    constructor(triangles){
+        //TODO
+    }
+
+    getRayInCube(ray){
+        //TODO
+    }
+}
+
+class Model{
+    constructor(triangles){
+        //TODO
+    }
+
+    isIntersected(ray){
+        //TODO
+    }
+}
+
+class Ray{
+    constructor(startPoint, endPoint){
+        //TODO
+    }
+}
+
+class Triangle{
+    constructor(vertexes){
+        //TODO
+    }
+
+    getNormal(){
+        //TODO
+    }
+
+    isIntersected(ray){
+        //TODO
+    }
+}
+
+
 
 //Globals needed for all the functions
 let gl;
