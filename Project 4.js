@@ -2,15 +2,16 @@
 //Objects
 //Represents the pixels that will be drawn to the screen
 class PixelBuffer {
-    constructor(height, width) {
+    constructor(height, width, defaultColor) {
         this.height = height;
         this.width = width;
+        this.defaultColor = defaultColor;
 
         this.colorArray = [];
         for ( let i = 0; i < this.height; i++ ) {
             this.colorArray[i] = [];
             for( let j = 0; j < this.width; j++ ) {
-                this.colorArray[i][j] = vec4(0.0, 0.0, 0.0, 1.0);
+                this.colorArray[i][j] = defaultColor;
             }
         }
     }
@@ -61,52 +62,114 @@ class Viewer {
     }
 }
 
+//Panel that the viewer looks through to see the scene
 class ViewPanel{
-    constructor(topLeft, bottomRight, pixelRows, pixelColumns){
-        //TODO
+    constructor(topLeft, topRight, bottomLeft, pixelRows, pixelColumns){
+        this.topLeft = topLeft;
+        this.topRight = topRight;
+        this.bottomLeft = bottomLeft;
+        this.pixelRows = pixelRows;
+        this.pixelColumns = pixelColumns;
+
+        this.displaceXrow = (bottomLeft[0] - topLeft[0])/pixelRows;
+        this.displaceYrow = (bottomLeft[1] - topLeft[1])/pixelRows;
+        this.displaceZrow = (bottomLeft[2] - topLeft[2])/pixelRows;
+
+        this.displaceXcolumn = (topRight[0] - topLeft[0])/pixelColumns;
+        this.displaceYcolumn = (topRight[1] - topLeft[1])/pixelColumns;
+        this.displaceZcolumn = (topRight[2] - topLeft[2])/pixelColumns;
     }
 
     getCenter(row, column){
-        //TODO
+        return vec3(
+            (row+0.5)*displaceXrow + (column+0.5)*displaceXcolumn + topLeft[0],
+            (row+0.5)*displaceYrow + (column+0.5)*displaceYcolumn + topLeft[1],
+            (row+0.5)*displaceZrow + (column+0.5)*displaceZcolumn + topLeft[2]
+            );
     }
 }
 
+//Clipping cube of the scene
 class ClippingCube{
     constructor(triangles){
-        //TODO
+        this.triangles = triangles;
     }
 
     getRayInCube(ray){
-        //TODO
+        let intersectionTs = [];
+        for(let i = 0; i < this.triangles.length; i++){
+            let intersectT = this.triangles[i].getIntersectionT(ray);
+            if(intersectT){
+                intersectionTs.push(intersectT);
+            }
+        }
+        if(intersectionTs.length === 2){
+            let point1 = ray.getPointAtT(intersectionTs[0]);
+            let point2 = ray.getPointAtT(intersectionTs[1]);
+            if(intersectionTs[0] < intersectionTs[1]){
+                return new Ray(point1,point2);
+            }
+            return new Ray(point2,point1);
+        } else {
+            return false;
+        }
     }
 }
 
+//Models an object in the scene
 class Model{
     constructor(triangles){
-        //TODO
+        this.triangles = triangles;
     }
 
-    isIntersected(ray){
-        //TODO
+    getIntersectionTriangle(ray){
+        let minimumT = this.triangles[0].getIntersectionT(ray);
+        let minimumTriangle = this.triangles[0];
+        for(let i = 1; i < this.triangles.length; i++){
+            let intersectT = this.triangles[i].getIntersectionT(ray);
+            if(intersectT){
+                if(!minimumT || (intersectT < minimumT)){
+                    minimumT = intersectT;
+                    minimumTriangle = this.triangles[i];
+                }
+            }
+        }
+        return minimumTriangle;
     }
 }
 
+//Represents a ray
 class Ray{
     constructor(startPoint, endPoint){
-        //TODO
+        this.startPoint = startPoint;
+        this.endPoint = endPoint;
+    }
+
+    getPointAtT(t){
+        return vex3(
+            (endPoint[0] - startPoint[0])*t,
+            (endPoint[1] - startPoint[1])*t,
+            (endPoint[2] - startPoint[2])*t
+            );
     }
 }
 
+//Represents a triangle
 class Triangle{
-    constructor(vertexes){
-        //TODO
+    constructor(vertexes,color){
+        this.vertexes = vertexes;
+        this.color = color;
     }
 
     getNormal(){
         //TODO
     }
 
-    isIntersected(ray){
+    getColor(){
+        return this.color;
+    }
+
+    getIntersectionT(ray){
         //TODO
     }
 }
@@ -121,7 +184,7 @@ let height = 500;
 let width = 500;
 let colorArray = [];
 
-var pixelBuffer = new PixelBuffer(500,500);
+var pixelBuffer = new PixelBuffer(500,500, vec4(0.0, 0.0, 0.0, 1.0));
 
 window.onload = function init()
 {
