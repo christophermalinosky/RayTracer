@@ -1,3 +1,6 @@
+// Define floating point EPSILON value
+const EPSILON = 0.000001;
+
 
 //Objects
 //Represents the pixels that will be drawn to the screen
@@ -24,11 +27,11 @@ class PixelBuffer {
         return this.width;
     }
 
-    setColor(row,column,color){
+    setColor(row,column,color) {
         this.colorArray[row][column] = color;
     }
 
-    getColor(row,column){
+    getColor(row,column) {
         return this.colorArray[row][column];
     }
 
@@ -59,6 +62,10 @@ class Viewer {
 
     getLocation(){
         return this.location;
+    }
+
+    createViewPanel() {
+        throw "Viewer.createViewPanel not implemented";
     }
 }
 
@@ -103,16 +110,24 @@ class ClippingCube{
                 intersectionTs.push(intersectT);
             }
         }
-        if(intersectionTs.length === 2){
+        if(intersectionTs.length === 2) {
             let point1 = ray.getPointAtT(intersectionTs[0]);
             let point2 = ray.getPointAtT(intersectionTs[1]);
-            if(intersectionTs[0] < intersectionTs[1]){
+            if(intersectionTs[0] < intersectionTs[1]) {
                 return new Ray(point1,point2);
             }
             return new Ray(point2,point1);
         } else {
             return false;
         }
+    }
+
+    createClip(viewer, view, models) {
+        console.log("ClippingCube.createClip not implemented");
+        let t = [];
+        for (m in models) 
+            t = t.concat(m.triangles);
+        return new ClippingCube(t);
     }
 }
 
@@ -139,10 +154,11 @@ class Model{
 }
 
 //Represents a ray
-class Ray{
+class Ray {
     constructor(startPoint, endPoint){
         this.startPoint = startPoint;
         this.endPoint = endPoint;
+        this.D = sub(endPoint, startPoint);
     }
 
     getPointAtT(t){
@@ -150,30 +166,102 @@ class Ray{
             (endPoint[0] - startPoint[0])*t,
             (endPoint[1] - startPoint[1])*t,
             (endPoint[2] - startPoint[2])*t
-            );
+        );
     }
 }
 
 //Represents a triangle
-class Triangle{
+class Triangle {
+    //vertexes should be a list of 3 vec4 elements
     constructor(vertexes,color){
         this.vertexes = vertexes;
         this.color = color;
+        // U and V used for normal and Möller–Trumbore
+        this.U = sub(vertexes[2], vertexes[1]);
+        this.V = sub(vertexes[3], vertexes[1]);
+        //compute normal here so we only have to do that once, not every time we draw
+        //counter-clockwise winding to match OpenGL/WebGL
+        this.normal = cross(this.U, this.V)
     }
 
     getNormal(){
-        //TODO
+        return this.normal
     }
 
     getColor(){
         return this.color;
     }
 
+    // Implementation of Möller–Trumbore ray-triangle intersection algorithm
     getIntersectionT(ray){
-        //TODO
+        let P = cross(ray.D, this.V);
+        let det = dot(this.U, P);
+        if (Math.abs(det) < EPSILON) // det ~= 0 ==> ray parallel to triangle ==> cull
+            return NaN;
+        let inv = 1.0/det;
+        let T = sub(ray.startPoint, this.vertexes[0]);
+        let u = dot(T, P) * inv;
+        if ( (u < 0) || (u > 1.0) ) // outside triangle ==> cull
+            return NaN;
+        let Q = cross(T, U);
+        let v = dot(ray.D, Q) * inv;
+        if ( (v < 0) || (v > 1.0) ) // outside triangle ==> cull
+            return NaN;
+        let t = DOT(e2, Q) * inv;
+        if ( t < 0 ) // triangle is behind start of ray ==> cull
+            return NaN;
+        return t;
+    }
+
+    static createCube(x, y, z, s, color) {
+        let p = [
+            vec3(x+s, y, z)
+            vec3(x+s, y+s, z)
+            vec3(x, y+s, z)
+            vec3(x, y, z)
+            vec3(x+s, y, z+s)
+            vec3(x+s, y+s, z+s)
+            vec3(x, y+s, z+s)
+            vec3(x, y, z+s)
+        ];
+        return
+            new Model([
+                new Triangle([ p[1], p[2], p[4] ], color),
+                new Triangle([ p[2], p[3], p[4] ], color),
+                new Triangle([ p[5], p[6], p[1] ], color),
+                new Triangle([ p[6], p[2], p[1] ], color),
+                new Triangle([ p[4], p[3], p[7] ], color),
+                new Triangle([ p[3], p[7], p[8] ], color),
+                new Triangle([ p[7], p[6], p[8] ], color),
+                new Triangle([ p[6], p[5], p[8] ], color)
+            ]);
     }
 }
 
+// Vector helper functions
+function sub(U, V) {
+    return [
+        U[0] - V[0],
+        U[1] - V[1],
+        U[2] - V[2]
+    ];
+}
+
+function dot(U, V) {
+    return (
+        (U[0] * V[0]) +
+        (U[1] * V[1]) +
+        (U[2] * V[2])
+    );
+}
+
+function cross(U, V) {
+    return vec3(
+        (U[1] * V[2]) - (U[2] - V[1]) // N.x = (U.y - V.z) * (U.z - V.y)
+        (U[2] * V[0]) - (U[0] - V[2]) // N.y = (U.z - V.x) * (U.x - V.z)
+        (U[0] * V[1]) - (U[1] - V[0]) // N.z = (U.x - V.y) * (U.y - V.x)
+    );
+}
 
 
 //Globals needed for all the functions
@@ -192,7 +280,6 @@ window.onload = function init()
     gl = WebGLUtils.setupWebGL( canvas );
     if ( !gl ) { alert( "WebGL isn't available" ); }
 
-
     //
     //  Configure WebGL
     //
@@ -204,10 +291,45 @@ window.onload = function init()
     let program = initShaders( gl, "vertex-shader", "fragment-shader" );
     gl.useProgram( program );
 
-    for ( let i = 150; i < 200; i++ ) {
-        pixelBuffer.setColor(0, i, vec4(1.0, 1.0, 0.0, 1.0));
-    }
+    // Create scene
 
+    console.log("CREATING MODELS...");
+
+        let models = [
+            Model.createCube(0, 0, 0, 1, vec4(0.0, 0.0, 1.0, 1.0)),
+            Model.createCube(-1, 2, 4, 1.5, vec4(0.0, 0.0, 1.0, 1.0))
+        ];
+
+        //for future debugging
+        console.log("\tModels: ", models);
+
+    console.log("CREATING VIEWER, VIEWPANEL...");
+
+        //Todo: some fancy logic of determining a good view panel ->  Viewer.createViewPanel()
+        let viewer = new Viewer(vec3[0, 0, -10]);
+        let view = new ViewPanel(
+            vec3(-2.5, 2.5, -5), vec3(-2.5, 2.5, -5), vec3(-2.5, -2.5, -5),
+            pixelBufer.getHeight(), pixelBuffer.getWidth()
+        );
+
+        //for future debugging
+        console.log("\tViewer: ", viewer);
+        console.log("\tViewPanel: ", view);
+
+    console.log("CREATING CLIPPING CUBE...");
+
+        //Todo: clipping. This method isn't implemented correctly
+        let cc = ClippingCube.createClip(viewer, view, models);
+
+
+    console.log("PRE-RENDERING PIXELBUFFER...");
+
+        //Todo: rendering
+        console.log("Need to do pixelbuffer stuff");
+
+    // Draw buffer
+
+    console.log("PIXELBUFFER DRAWING...");
     pixelBuffer.draw(points)
 
     // Load the data into the GPU
@@ -229,6 +351,7 @@ window.onload = function init()
 
 
 function render() {
+    console.log("Rendering pixels")
     gl.clear( gl.COLOR_BUFFER_BIT );
     index = 0;
     for ( let i = 0; i < pixelBuffer.getHeight() ; i++ ) {
