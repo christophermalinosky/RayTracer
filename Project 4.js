@@ -122,11 +122,14 @@ class ClippingCube{
         }
     }
 
-    createClip(viewer, view, models) {
+    static createClip(viewer, view, models) {
         console.log("ClippingCube.createClip not implemented");
+        console.log(models)
         let t = [];
-        for (m in models) 
-            t = t.concat(m.triangles);
+        for (let i = 0; i < models.length; i++) {
+            console.log(i, models[i])
+            t = t.concat(models[i].triangles);
+        }
         return new ClippingCube(t);
     }
 }
@@ -150,6 +153,33 @@ class Model{
             }
         }
         return minimumTriangle;
+    }
+
+    static createCube(x, y, z, s, color) {
+        let p = [
+            null, // started with 1 not 0, adding this is easier than changing numbers below
+            vec3(x+s, y, z),
+            vec3(x+s, y+s, z),
+            vec3(x, y+s, z),
+            vec3(x, y, z),
+            vec3(x+s, y, z+s),
+            vec3(x+s, y+s, z+s),
+            vec3(x, y+s, z+s),
+            vec3(x, y, z+s)
+        ];
+        let m =
+            new Model([
+                new Triangle([ p[1], p[2], p[4] ], color),
+                new Triangle([ p[2], p[3], p[4] ], color),
+                new Triangle([ p[5], p[6], p[1] ], color),
+                new Triangle([ p[6], p[2], p[1] ], color),
+                new Triangle([ p[4], p[3], p[7] ], color),
+                new Triangle([ p[3], p[7], p[8] ], color),
+                new Triangle([ p[7], p[6], p[8] ], color),
+                new Triangle([ p[6], p[5], p[8] ], color)
+            ]);
+        return m;
+        //what an amusing meme. it will return undefined if we do `return new Model(...);` but works fine when we do `let m = new Model(...); return m;`
     }
 }
 
@@ -177,8 +207,8 @@ class Triangle {
         this.vertexes = vertexes;
         this.color = color;
         // U and V used for normal and Möller–Trumbore
-        this.U = sub(vertexes[2], vertexes[1]);
-        this.V = sub(vertexes[3], vertexes[1]);
+        this.U = sub(vertexes[1], vertexes[0]);
+        this.V = sub(vertexes[2], vertexes[0]);
         //compute normal here so we only have to do that once, not every time we draw
         //counter-clockwise winding to match OpenGL/WebGL
         this.normal = cross(this.U, this.V)
@@ -212,30 +242,6 @@ class Triangle {
             return NaN;
         return t;
     }
-
-    static createCube(x, y, z, s, color) {
-        let p = [
-            vec3(x+s, y, z)
-            vec3(x+s, y+s, z)
-            vec3(x, y+s, z)
-            vec3(x, y, z)
-            vec3(x+s, y, z+s)
-            vec3(x+s, y+s, z+s)
-            vec3(x, y+s, z+s)
-            vec3(x, y, z+s)
-        ];
-        return
-            new Model([
-                new Triangle([ p[1], p[2], p[4] ], color),
-                new Triangle([ p[2], p[3], p[4] ], color),
-                new Triangle([ p[5], p[6], p[1] ], color),
-                new Triangle([ p[6], p[2], p[1] ], color),
-                new Triangle([ p[4], p[3], p[7] ], color),
-                new Triangle([ p[3], p[7], p[8] ], color),
-                new Triangle([ p[7], p[6], p[8] ], color),
-                new Triangle([ p[6], p[5], p[8] ], color)
-            ]);
-    }
 }
 
 // Vector helper functions
@@ -257,9 +263,9 @@ function dot(U, V) {
 
 function cross(U, V) {
     return vec3(
-        (U[1] * V[2]) - (U[2] - V[1]) // N.x = (U.y - V.z) * (U.z - V.y)
-        (U[2] * V[0]) - (U[0] - V[2]) // N.y = (U.z - V.x) * (U.x - V.z)
-        (U[0] * V[1]) - (U[1] - V[0]) // N.z = (U.x - V.y) * (U.y - V.x)
+        (U[1] * V[2]) - (U[2] * V[1]), // N.x = (U.y * V.z) - (U.z * V.y)
+        (U[2] * V[0]) - (U[0] * V[2]), // N.y = (U.z * V.x) - (U.x * V.z)
+        (U[0] * V[1]) - (U[1] * V[0]) // N.z = (U.x * V.y) - (U.y * V.x)
     );
 }
 
@@ -309,7 +315,7 @@ window.onload = function init()
         let viewer = new Viewer(vec3[0, 0, -10]);
         let view = new ViewPanel(
             vec3(-2.5, 2.5, -5), vec3(-2.5, 2.5, -5), vec3(-2.5, -2.5, -5),
-            pixelBufer.getHeight(), pixelBuffer.getWidth()
+            pixelBuffer.getHeight(), pixelBuffer.getWidth()
         );
 
         //for future debugging
