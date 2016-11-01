@@ -142,6 +142,7 @@ class Model{
         let minimumTriangle = false;
         for(let i = 0; i < this.triangles.length; i++){
             let intersectT = this.triangles[i].getIntersectionT(ray);
+            // console.log(intersectT);
             if(intersectT && (intersectT <= 1) && (intersectT >= 0)){
                 if((minimumT === false)  || (intersectT < minimumT)){
                     minimumT = intersectT;
@@ -244,7 +245,7 @@ class Triangle {
             return false;
         let Q = cross(T, this.U);
         let v = dot(ray.D, Q) * inv;
-        if ( (v < 0) || (v > 1.0) ) // outside triangle ==> cull
+        if ( (v < 0) || ( u + v > 1.0) ) // outside triangle ==> cull
             return false;
         let t = dot(this.V, Q) * inv;
         // if ( t < 0 ) // triangle is behind start of ray ==> cull
@@ -288,7 +289,7 @@ let height = 500;
 let width = 500;
 let colorArray = [];
 
-var pixelBuffer = new PixelBuffer(500,500, vec4(0.0, 0.0, 0.0, 1.0));
+var pixelBuffer = new PixelBuffer(width,height, vec4(0.0, 0.0, 0.0, 1.0));
 
 window.onload = function init()
 {
@@ -312,15 +313,16 @@ window.onload = function init()
     console.log("CREATING MODELS...");
 
         let models = [
-            Model.createCube(0, 0, 0, 1, vec4(0.0, 0.0, 1.0, 1.0))
-            // Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0))
+            // new Model([new Triangle([vec3(0,0,0),vec3(1,0,0),vec3(0.5,1,0)],vec4(0,0,1,1))])
+            Model.createCube(0, 0, 0, 1, vec4(0.0, 0.0, 1.0, 1.0)),
+            Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0))
         ];
 
         //for future debugging
 
         // console.log("\tModels: ", models);
 
-        // console.log("Logic check: ", models[0].getIntersection(new Ray(vec3(0.5,0.5,-1), vec3(0.5,0.5,2))));
+        console.log("Logic check: ", models[0].getIntersection(new Ray(vec3(-.5,0.5,0.5), vec3(0.5,0.5,0.5))));
 
     console.log("CREATING VIEWER, VIEWPANEL...");
 
@@ -338,9 +340,17 @@ window.onload = function init()
         // console.log("\tViewer: ", viewer);
         // console.log("\tViewPanel: ", view);
 
+        // let test = new ViewPanel(
+        //     vec3(0, 1, 0), vec3(1, 1, 0), vec3(0, 0, 0),
+        //     10,10
+        // );
+        // console.log(test.getCenter(9,9));
+        // console.log(view.getCenter(249,249));
+
+
     console.log("CREATING CLIPPING CUBE...");
 
-        let cc = new ClippingCube(-2, -2, -2, 4);
+        let cc = new ClippingCube(-2, -2, -2, 6);
         // console.log(cc);
 
         //Debugging
@@ -349,6 +359,30 @@ window.onload = function init()
         // let testCC = new ClippingCube(0,0,0,2);
         // console.log(testCC);
         // console.log(testCC.getRayInCube(testRay));
+
+        // Tests Triangle
+        // let testTriangle = new Triangle([vec3(0,0,0),vec3(1,0,0),vec3(0.5,1,0)],vec4(0,0,1,1));
+        // let testRay = new Ray(vec3(0.5,1,-0.5), vec3(0.5,1, 0.5));
+        // console.log("Test 1: ", testTriangle.getIntersectionT(testRay));
+        // testRay = new Ray(vec3(0.5,1.01,-0.5), vec3(0.5,1.01, 0.5));
+        // console.log("Test 1: ", testTriangle.getIntersectionT(testRay));
+        // testRay = new Ray(vec3(0.501,1,-0.5), vec3(0.501,1, 0.5));
+        // console.log("Test 1: ", testTriangle.getIntersectionT(testRay));
+
+
+        // let testModel = new Model([new Triangle([vec3(0,0,0),vec3(1,0,0),vec3(0.5,1,0)],vec4(0,0,1,1))]);
+        // let testRay = new Ray(vec3(0.5,1,-0.5), vec3(0.5,1, 0.5));
+        // console.log("Test 1: ", testModel.getIntersection(testRay));
+        // testRay = new Ray(vec3(0.5,1.01,-0.5), vec3(0.5,1.01, 0.5));
+        // console.log("Test 1: ", testModel.getIntersection(testRay));
+        // testRay = new Ray(vec3(0.501,1,-0.5), vec3(0.501,1, 0.5));
+        // console.log("Test 1: ", testModel.getIntersection(testRay));
+        // testRay = new Ray(vec3(0.499,1,-0.5), vec3(0.499,1, 0.5));
+        // console.log("Test 1: ", testModel.getIntersection(testRay));
+        // testRay = new Ray(vec3(0,0,-0.5), vec3(0,0, 0.5));
+        // console.log("Test 2: ", testModel.getIntersection(testRay));
+        // testRay = new Ray(vec3(0.5,0,-0.5), vec3(0.5,0, 0.5));
+        // console.log("Test 3: ", testModel.getIntersection(testRay));
 
     console.log("GET RAYS");
 
@@ -372,7 +406,7 @@ window.onload = function init()
                             min = intersect;
                     }
                 }
-                if (min) {
+                if (min !== false) {
                     pixelBuffer.setColor(x, y, min.triangle.color);
                     // console.log("set x y color", x, y, min.triangle.color);
                 }
