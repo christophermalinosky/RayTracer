@@ -106,12 +106,18 @@ class ClippingCube{
         let intersectionTs = [];
         for(let i = 0; i < this.triangles.length; i++){
             let intersectT = this.triangles[i].getIntersectionT(ray);
-            if(intersectT){
-                //console.log(intersectT);
+            if(intersectT !== false && intersectionTs.length === 0){
+                // console.log(intersectT);
+                intersectionTs.push(intersectT);
+            } else if(intersectT !== false && intersectionTs.length === 1 && intersectionTs[0] !== intersectT) {
                 intersectionTs.push(intersectT);
             }
         }
-        if(intersectionTs.length === 2) {
+        // console.log("Intersects:", intersectionTs);
+        if(intersectionTs.length === 1) {
+            let point1 = ray.getPointAtT(intersectionTs[0]);
+            return new Ray(point1, point1);
+        } else if(intersectionTs.length === 2) {
             // console.log("nofail")
             let point1 = ray.getPointAtT(intersectionTs[0]);
             let point2 = ray.getPointAtT(intersectionTs[1]);
@@ -119,9 +125,8 @@ class ClippingCube{
                 return new Ray(point1,point2);
             }
             return new Ray(point2,point1);
-        } else {
-            return false;
         }
+        return false;
     }
 
 }
@@ -133,23 +138,23 @@ class Model{
     }
 
     getIntersection(ray){
-        let minimumT = this.triangles[0].getIntersectionT(ray);
-        let minimumTriangle = this.triangles[0];
-        for(let i = 1; i < this.triangles.length; i++){
+        let minimumT = false;
+        let minimumTriangle = false;
+        for(let i = 0; i < this.triangles.length; i++){
             let intersectT = this.triangles[i].getIntersectionT(ray);
-            if(intersectT){
-                if(!minimumT || (intersectT < minimumT)){
+            if(intersectT && (intersectT <= 1) && (intersectT >= 0)){
+                if((minimumT === false)  || (intersectT < minimumT)){
                     minimumT = intersectT;
                     minimumTriangle = this.triangles[i];
                 }
             }
         }
-        //if (minimumT)
+        if (minimumT !== false)
             return {
                 triangle: minimumTriangle, 
                 t: minimumT
             };
-        //else
+        else
             return false; // no intersection
     }
 
@@ -196,9 +201,9 @@ class Ray {
 
     getPointAtT(t){
         return vec3(
-            (this.endPoint[0] - this.startPoint[0])*t,
-            (this.endPoint[1] - this.startPoint[1])*t,
-            (this.endPoint[2] - this.startPoint[2])*t
+            this.startPoint[0] + (this.endPoint[0] - this.startPoint[0])*t,
+            this.startPoint[1] + (this.endPoint[1] - this.startPoint[1])*t,
+            this.startPoint[2] + (this.endPoint[2] - this.startPoint[2])*t
         );
     }
 }
@@ -231,20 +236,20 @@ class Triangle {
         let P = cross(ray.D, this.V);
         let det = dot(this.U, P);
         if (Math.abs(det) < EPSILON) // det ~= 0 ==> ray parallel to triangle ==> cull
-            return NaN;
+            return false;
         let inv = 1.0/det;
         let T = sub(ray.startPoint, this.vertexes[0]);
         let u = dot(T, P) * inv;
         if ( (u < 0) || (u > 1.0) ) // outside triangle ==> cull
-            return NaN;
+            return false;
         let Q = cross(T, this.U);
         let v = dot(ray.D, Q) * inv;
         if ( (v < 0) || (v > 1.0) ) // outside triangle ==> cull
-            return NaN;
+            return false;
         let t = dot(this.V, Q) * inv;
-        if ( t < 0 ) // triangle is behind start of ray ==> cull
-            return NaN;
-        //console.log("got t", t);
+        // if ( t < 0 ) // triangle is behind start of ray ==> cull
+        //     return NaN;
+        // console.log("got t", t);
         return t;
     }
 }
@@ -307,14 +312,15 @@ window.onload = function init()
     console.log("CREATING MODELS...");
 
         let models = [
-            Model.createCube(0, 0, 0, 1, vec4(0.0, 0.0, 1.0, 1.0)),
-            Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0))
+            Model.createCube(0, 0, 0, 1, vec4(0.0, 0.0, 1.0, 1.0))
+            // Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0))
         ];
 
         //for future debugging
-        console.log("\tModels: ", models);
 
-        // console.log(models[0].getIntersection(new Ray(vec3(0,0,-1), vec3(0.5,0.5,0.5))));
+        // console.log("\tModels: ", models);
+
+        // console.log("Logic check: ", models[0].getIntersection(new Ray(vec3(0.5,0.5,-1), vec3(0.5,0.5,2))));
 
     console.log("CREATING VIEWER, VIEWPANEL...");
 
@@ -326,41 +332,49 @@ window.onload = function init()
         );
 
         //for future debugging
-        console.log("\tViewer: ", viewer);
-        console.log("\tViewPanel: ", view);
+        // console.log(view.getCenter(250,250));
+        // console.log(viewer.getLocation());
+
+        // console.log("\tViewer: ", viewer);
+        // console.log("\tViewPanel: ", view);
 
     console.log("CREATING CLIPPING CUBE...");
 
-        //Todo: clipping. This method isn't implemented correctly
-        let cc = new ClippingCube(-1, -1, -1.5, 3);
-        console.log(cc);
+        let cc = new ClippingCube(-2, -2, -2, 4);
+        // console.log(cc);
 
+        //Debugging
+        // let testRay = new Ray(vec3(-1,-1,-1), vec3(-0.5,-0.5,-0.5));
+        // console.log(testRay);
+        // let testCC = new ClippingCube(0,0,0,2);
+        // console.log(testCC);
+        // console.log(testCC.getRayInCube(testRay));
 
     console.log("GET RAYS");
 
-                console.log("orig ray 1 1", viewer.getLocation(), view.getCenter(1, 1))
-                console.log("orig ray 3 10" , viewer.getLocation(), view.getCenter(3, 10))
+        // console.log("orig ray 1 1", viewer.getLocation(), view.getCenter(1, 1))
+        // console.log("orig ray 3 10" , viewer.getLocation(), view.getCenter(3, 10))
         //Todo: rendering
         for (let x = 0; x < pixelBuffer.getWidth(); x++)
             for (let y = 0; y < pixelBuffer.getHeight(); y++) {
                 let ray = cc.getRayInCube(
                     new Ray(viewer.getLocation(), view.getCenter(x, y))
                 );
-                if (!ray) continue;
-                //console.log(JSON.stringify(ray));
-                let i, min;
-                for (m in models) {
-                    i = models[m].getIntersection(ray);
-                    if (!min)
-                        min = i;
-                    else if (i) {
-                        if (i.t < min.t)
-                            min = i;
+                if (ray === false) continue;
+                // console.log(JSON.stringify(ray));
+                let intersect, min = false;
+                for (let i = 0; i < models.length; i++ ) {
+                    intersect = models[i].getIntersection(ray);
+                    if (min === false && intersect !== false)
+                        min = intersect;
+                    else if (intersect !== false) {
+                        if (intersect.t < min.t)
+                            min = intersect;
                     }
                 }
                 if (min) {
                     pixelBuffer.setColor(x, y, min.triangle.color);
-                    //console.log("set x y color", x, y, min.triangle.color);
+                    // console.log("set x y color", x, y, min.triangle.color);
                 }
             }
 
