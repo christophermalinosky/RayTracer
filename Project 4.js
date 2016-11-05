@@ -133,8 +133,12 @@ class ClippingCube{
 
 //Models an object in the scene
 class Model{
-    constructor(triangles){
+    constructor(triangles, ambientConstant, diffusionConstant, specularConstant, shininess){
         this.triangles = triangles;
+        this.ambientConstant = ambientConstant;
+        this.diffusionConstant = diffusionConstant;
+        this.specularConstant = specularConstant;
+        this.shininess = shininess;
     }
 
     getIntersection(ray){
@@ -153,13 +157,17 @@ class Model{
         if (minimumT !== false)
             return {
                 triangle: minimumTriangle, 
-                t: minimumT
+                t: minimumT,
+                ambientConstant: this.ambientConstant,
+                diffusionConstant: this.diffusionConstant,
+                specularConstant: this.specularConstant,
+                shininess: this.shininess
             };
         else
             return false; // no intersection
     }
 
-    static createCube(x, y, z, s, color) {
+    static createCube(x, y, z, s, color, ambientConstant, diffusionConstant, specularConstant, shininess) {
         let p = [
             null, // started with 1 not 0, adding this is easier than changing numbers below
             vec3(x+s, y, z),
@@ -185,7 +193,7 @@ class Model{
                 new Triangle([ p[2], p[6], p[7] ], color),
                 new Triangle([ p[1], p[4], p[8] ], color),
                 new Triangle([ p[1], p[8], p[5] ], color)
-            ]);
+            ], ambientConstant, diffusionConstant, specularConstant, shininess);
         return m;
         //what an amusing meme. it will return undefined if we do `return new Model(...);` but works fine when we do `let m = new Model(...); return m;`
     }
@@ -224,7 +232,7 @@ class Triangle {
     }
 
     getNormal(){
-        return this.normal
+        return this.normal;
     }
 
     getColor(){
@@ -255,6 +263,14 @@ class Triangle {
     }
 }
 
+//Represents a point light source
+class PointLightSource {
+    constructor(position, intensity){
+        this.position = position;
+        this.intensity = intensity;
+    }
+}
+
 // Vector helper functions
 function sub(U, V) {
     return [
@@ -280,6 +296,14 @@ function cross(U, V) {
     );
 }
 
+function scale(C, V) {
+    return vec3(
+        C * V[0],
+        C * V[1],
+        C * V[2]
+    );
+}
+
 
 //Globals needed for all the functions
 let gl;
@@ -288,6 +312,12 @@ let points = [];
 let height = 500;
 let width = 500;
 let colorArray = [];
+
+//Lighting Globals
+let a = 1;
+let b = 1;
+let c = 1;
+let ambientIntensity = vec4(0.2, 0.2, 0.2, 1.0 );
 
 var pixelBuffer = new PixelBuffer(width,height, vec4(0.0, 0.0, 0.0, 1.0));
 
@@ -310,13 +340,14 @@ window.onload = function init()
 
     // Create scene
 
-    console.log("CREATING MODELS...");
+    console.log("CREATING MODELS AND LIGHTS...");
 
         let models = [
-            // new Model([new Triangle([vec3(0,0,0),vec3(1,0,0),vec3(0.5,1,0)],vec4(0,0,1,1))])
-            Model.createCube(0, 0, 0, 1, vec4(0.0, 0.0, 1.0, 1.0)),
-            Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0))
+            Model.createCube(0, 0, 0, 1, vec4(0.0, 0.0, 1.0, 1.0), 1, 1, 1, 60),
+            Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0), 1, 1, 1, 60)
         ];
+
+        let lightSource = new PointLightSource(vec3(-2,5,-5), vec4(1,1,1,1));
 
         //for future debugging
 
@@ -389,6 +420,7 @@ window.onload = function init()
         // console.log("orig ray 1 1", viewer.getLocation(), view.getCenter(1, 1))
         // console.log("orig ray 3 10" , viewer.getLocation(), view.getCenter(3, 10))
         //Todo: rendering
+        let count = 0;
         for (let x = 0; x < pixelBuffer.getWidth(); x++)
             for (let y = 0; y < pixelBuffer.getHeight(); y++) {
                 let ray = cc.getRayInCube(
@@ -407,12 +439,49 @@ window.onload = function init()
                     }
                 }
                 if (min !== false) {
-                    pixelBuffer.setColor(x, y, min.triangle.color);
-                    // console.log("set x y color", x, y, min.triangle.color);
+                    let position = ray.getPointAtT(min.t);
+                    let lightRay = new Ray(ray.getPointAtT(min.t), lightSource.position);
+                    let isShadow = false;
+                    for (let i = 0; i < models.length && !isShadow; i++ ) {
+                        intersect = models[i].getIntersection(lightRay);
+                        if (intersect !== false && intersect.t !== 0){
+                            isShadow = true;
+                        }
+                    }
+
+                    let L = normalize( sub(lightSource.position, position) );
+                    let N = normalize( min.triangle.normal );
+                    let R = normalize( sub(scale(dot(L, N), scale(2 , N)), L) );
+                    let V = normalize( sub(viewer.location, position));
+
+                    let ambient = scale(min.ambientConstant, ambientIntensity);
+                    if(!isShadow){
+                        let distance = sub(lightRay.endPoint, lightRay.startPoint);
+                        distance = Math.abs(distance[0]) + Math.abs(distance[1]) + Math.abs(distance[2]);
+                        let distanceCoefficient = 1 / (a + (b * distance) + (c * Math.pow(distance, 2)));
+
+                        let diffuse = scale(min.diffusionConstant * distanceCoefficient * Math.max(dot(L, N), 0.0), lightSource.intensity);
+
+                        let specular = scale(min.specularConstant * distanceCoefficient * Math.max(Math.pow(dot(R,V), min.shininess), 0.0), lightSource.intensity);
+
+                        if(count < 5){
+                            // console.log(ambient);
+                            console.log(diffuse);
+                            console.log(dot(L,N));
+                            // console.log(specular);
+                            count++;
+                        }
+
+                        let lighting = add(add(ambient, diffuse), specular);
+                        lighting[3] = 1;
+
+                        pixelBuffer.setColor(x, y, mult(min.triangle.color, lighting));
+                    } else {
+                        ambient[3] = 1;
+                        pixelBuffer.setColor(x, y, mult(min.triangle.color, ambient));
+                    }
                 }
             }
-
-    console.log()
 
     // Draw buffer
 
