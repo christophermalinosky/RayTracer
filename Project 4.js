@@ -315,8 +315,8 @@ let colorArray = [];
 
 //Lighting Globals
 let a = 1;
-let b = 1;
-let c = 1;
+let b = 0.05;
+let c = 0.05;
 let ambientIntensity = vec4(0.2, 0.2, 0.2, 1.0 );
 
 var pixelBuffer = new PixelBuffer(width,height, vec4(0.0, 0.0, 0.0, 1.0));
@@ -343,11 +343,12 @@ window.onload = function init()
     console.log("CREATING MODELS AND LIGHTS...");
 
         let models = [
-            Model.createCube(0, 0, 0, 1, vec4(0.0, 0.0, 1.0, 1.0), 1, 1, 1, 60),
-            Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0), 1, 1, 1, 60)
+            Model.createCube(0, -2.5, -1, 1.5, vec4(0.0, 0.0, 1.0, 1.0), 1, 1, 1, 60),
+            Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0), 1, 1, 1, 60),
+            new Model([new Triangle([vec3(-3,-3,-3),vec3(3,-3,-3),vec3(-3,-3,4)],vec4(1,0,0,1)), new Triangle([vec3(-3,-3,4),vec3(3,-3,-3), vec3(3, -3, 4)],vec4(1,0,0,1))], 1, 1, 1, 60)
         ];
 
-        let lightSource = new PointLightSource(vec3(-2,5,-5), vec4(1,1,1,1));
+        let lightSource = new PointLightSource(vec3(0,0,-1), vec4(1,1,1,1));
 
         //for future debugging
 
@@ -381,7 +382,7 @@ window.onload = function init()
 
     console.log("CREATING CLIPPING CUBE...");
 
-        let cc = new ClippingCube(-2, -2, -2, 6);
+        let cc = new ClippingCube(-12, -10, -4.5, 30);
         // console.log(cc);
 
         //Debugging
@@ -444,7 +445,7 @@ window.onload = function init()
                     let isShadow = false;
                     for (let i = 0; i < models.length && !isShadow; i++ ) {
                         intersect = models[i].getIntersection(lightRay);
-                        if (intersect !== false && intersect.t !== 0){
+                        if (intersect !== false && intersect.t > EPSILON){
                             isShadow = true;
                         }
                     }
@@ -457,23 +458,32 @@ window.onload = function init()
                     let ambient = scale(min.ambientConstant, ambientIntensity);
                     if(!isShadow){
                         let distance = sub(lightRay.endPoint, lightRay.startPoint);
-                        distance = Math.abs(distance[0]) + Math.abs(distance[1]) + Math.abs(distance[2]);
+                        distance = Math.sqrt(Math.pow(distance[0],2) + Math.pow(distance[1],2) + Math.pow(distance[2],2));
                         let distanceCoefficient = 1 / (a + (b * distance) + (c * Math.pow(distance, 2)));
 
-                        let diffuse = scale(min.diffusionConstant * distanceCoefficient * Math.max(dot(L, N), 0.0), lightSource.intensity);
+                        let diffuse = scale(min.diffusionConstant * distanceCoefficient * Math.max(-dot(L, N), 0.0), lightSource.intensity);
 
                         let specular = scale(min.specularConstant * distanceCoefficient * Math.max(Math.pow(dot(R,V), min.shininess), 0.0), lightSource.intensity);
 
                         if(count < 5){
                             // console.log(ambient);
-                            console.log(diffuse);
-                            console.log(dot(L,N));
+                            // console.log(diffuse);
+                            // console.log(dot(L,N));
                             // console.log(specular);
                             count++;
                         }
 
                         let lighting = add(add(ambient, diffuse), specular);
                         lighting[3] = 1;
+
+                        if(count < 40){
+                            // console.log(ambient);
+                            // console.log(diffuse);
+                            // console.log(dot(L,N));
+                            // console.log(specular);
+                            console.log(lighting);
+                            count++;
+                        }
 
                         pixelBuffer.setColor(x, y, mult(min.triangle.color, lighting));
                     } else {
