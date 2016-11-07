@@ -1,5 +1,6 @@
 // Define floating point EPSILON value
 const EPSILON = 0.000001;
+const PHI = (1 + Math.sqrt(5))/2;
 
 
 //Objects
@@ -167,6 +168,43 @@ class Model{
             return false; // no intersection
     }
 
+    // Center at (x, y, z)
+    // Uses detail level "d" (how many 4x subdivision)
+    // r = radius
+    static createSphere(x, y, z, r, n, color, ambientConstant, diffusionConstant, specularConstant, shininess) {
+        return Model.createIcosahedron(r, color, ambientConstant, diffusionConstant, specularConstant, shininess);
+    }
+
+    // create 12 sided regular polyhedron
+    static createIcosahedron(r, color, ambientConstant, diffusionConstant, specularConstant, shininess) {
+        let a = r,
+            b = r / PHI;
+        let m = 
+            new Model([
+                new Triangle([ vec3(0, b, a), vec3(-b, a, 0), vec3(b, a, 0), color ]),
+                new Triangle([ vec3(-b, a, 0), vec3(0, b, a), vec3(b, a, 0), color ]),
+                new Triangle([ vec3(0, -b, a), vec3(0, b, a), vec3(-a, 0, b), color ]),
+                new Triangle([ vec3(a, 0, b), vec3(0, b, a), vec3(0, -b, 0), color ]),
+                new Triangle([ vec3(0, -b, -a), vec3(0, b, -a), vec3(a, 0, -b), color ]),
+                new Triangle([ vec3(-a,  0, -b),   vec3(0,  b, -a),  vec3(0, -b, -a), color ]),
+                new Triangle([ vec3(b, -a,  0),   vec3(0, -b,  a),  vec3(-b, -a,  0), color ]),
+                new Triangle([ vec3(-b, -a,  0),   vec3(0, -b, -a),   vec3(b, -a,  0), color ]),
+                new Triangle([ vec3(-a,  0,  b),  vec3(-b,  a,  0),  vec3(-a,  0, -b), color ]),
+                new Triangle([ vec3(-a,  0, -b),  vec3(-b, -a,  0),  vec3(-a,  0,  b), color ]),
+                new Triangle([ vec3(a,  0, -b),   vec3(b,  a,  0),   vec3(a,  0,  b), color ]),
+                new Triangle([ vec3(a,  0,  b),   vec3(b, -a,  0),   vec3(a,  0, -b), color ]),
+                new Triangle([ vec3(-a,  0,  b),   vec3(0,  b,  a),  vec3(-b,  a,  0), color ]),
+                new Triangle([ vec3(b,  a,  0),   vec3(0,  b,  a),   vec3(a,  0,  b), color ]),
+                new Triangle([ vec3(-b,  a,  0),   vec3(0,  b, -a),  vec3(-a,  0, -b), color ]),
+                new Triangle([ vec3(a,  0, -b),   vec3(0,  b, -a),   vec3(b,  a,  0), color ]),
+                new Triangle([ vec3(-a,  0, -b),   vec3(0, -b, -a),  vec3(-b, -a,  0), color ]),
+                new Triangle([ vec3( b, -a,  0),   vec3(0, -b, -a),  vec3( a,  0, -b), color ]),
+                new Triangle([ vec3(-b, -a,  0),   vec3(0, -b,  a),  vec3(-a,  0,  b), color ]),
+                new Triangle([ vec3(a,  0,  b),   vec3(0, -b,  a),   vec3(b, -a,  0), color ])
+            ], ambientConstant, diffusionConstant, specularConstant, shininess);
+        return m;
+    }
+
     static createCube(x, y, z, s, color, ambientConstant, diffusionConstant, specularConstant, shininess) {
         let p = [
             null, // started with 1 not 0, adding this is easier than changing numbers below
@@ -239,6 +277,21 @@ class Triangle {
         return this.color;
     }
 
+    getReflectedRay(ray, t) {
+        let N = normalize(this.normal);
+        let V = sub(ray.D, scale((2*dot(ray.D, N)), N));
+        let P = ray.getPointAtT(t);
+        let r = new Ray(
+                P,
+                vec3(
+                    P[0] + V[0],
+                    P[1] + V[1],
+                    P[2] + V[2]
+                )
+            );
+        return r;
+    }
+
     // Implementation of Möller–Trumbore ray-triangle intersection algorithm
     getIntersectionT(ray){
         //console.log("Give em the D: ", ray.D, ray)
@@ -296,6 +349,15 @@ function cross(U, V) {
     );
 }
 
+function normalize(V) {
+    let length = Math.sqrt(
+        (V[0] * V[0]) +
+        (V[1] * V[1]) +
+        (V[2] * V[2])
+    );
+    return scale(1 / length, V);
+}
+
 function scale(C, V) {
     return vec3(
         C * V[0],
@@ -346,6 +408,7 @@ window.onload = function init()
             Model.createCube(0, -2.5, -1, 1.5, vec4(0.0, 0.0, 1.0, 1.0), 1, 1, 1, 60),
             Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0), 1, 1, 1, 60),
             new Model([new Triangle([vec3(-3,-3,-3),vec3(3,-3,-3),vec3(-3,-3,4)],vec4(1,0,0,1)), new Triangle([vec3(-3,-3,4),vec3(3,-3,-3), vec3(3, -3, 4)],vec4(1,0,0,1))], 1, 1, 1, 60)
+            //,Model.createSphere(0, 2, 0, 3, 1, vec4(0.0, 1.0, 1.0, 1.0), 1, 1, 1, 60)
         ];
 
         let lightSource = new PointLightSource(vec3(0,0,-1), vec4(1,1,1,1));
@@ -418,6 +481,8 @@ window.onload = function init()
 
     console.log("GET RAYS");
 
+        const REFLECTION_RECURSIVE_DEPTH = 1; // a cap on how many times we will bounce to make our reflections
+
         // console.log("orig ray 1 1", viewer.getLocation(), view.getCenter(1, 1))
         // console.log("orig ray 3 10" , viewer.getLocation(), view.getCenter(3, 10))
         //Todo: rendering
@@ -429,69 +494,103 @@ window.onload = function init()
                 );
                 if (ray === false) continue;
                 // console.log(JSON.stringify(ray));
-                let intersect, min = false;
-                for (let i = 0; i < models.length; i++ ) {
-                    intersect = models[i].getIntersection(ray);
-                    if (min === false && intersect !== false)
+                let color =  getColorForRay(ray, REFLECTION_RECURSIVE_DEPTH)
+                if (color)
+                    pixelBuffer.setColor(x, y, color);
+            }
+
+        function getColorForRay(ray, depth) {
+            let intersect, min = false;
+            for (let i = 0; i < models.length; i++ ) {
+                intersect = models[i].getIntersection(ray);
+                if (min === false && intersect !== false)
+                    min = intersect;
+                else if (intersect !== false) {
+                    if (intersect.t < min.t)
                         min = intersect;
-                    else if (intersect !== false) {
-                        if (intersect.t < min.t)
-                            min = intersect;
-                    }
-                }
-                if (min !== false) {
-                    let position = ray.getPointAtT(min.t);
-                    let lightRay = new Ray(ray.getPointAtT(min.t), lightSource.position);
-                    let isShadow = false;
-                    for (let i = 0; i < models.length && !isShadow; i++ ) {
-                        intersect = models[i].getIntersection(lightRay);
-                        if (intersect !== false && intersect.t > EPSILON){
-                            isShadow = true;
-                        }
-                    }
-
-                    let L = normalize( sub(lightSource.position, position) );
-                    let N = normalize( min.triangle.normal );
-                    let R = normalize( sub(scale(dot(L, N), scale(2 , N)), L) );
-                    let V = normalize( sub(viewer.location, position));
-
-                    let ambient = scale(min.ambientConstant, ambientIntensity);
-                    if(!isShadow){
-                        let distance = sub(lightRay.endPoint, lightRay.startPoint);
-                        distance = Math.sqrt(Math.pow(distance[0],2) + Math.pow(distance[1],2) + Math.pow(distance[2],2));
-                        let distanceCoefficient = 1 / (a + (b * distance) + (c * Math.pow(distance, 2)));
-
-                        let diffuse = scale(min.diffusionConstant * distanceCoefficient * Math.max(-dot(L, N), 0.0), lightSource.intensity);
-
-                        let specular = scale(min.specularConstant * distanceCoefficient * Math.max(Math.pow(dot(R,V), min.shininess), 0.0), lightSource.intensity);
-
-                        if(count < 5){
-                            // console.log(ambient);
-                            // console.log(diffuse);
-                            // console.log(dot(L,N));
-                            // console.log(specular);
-                            count++;
-                        }
-
-                        let lighting = add(add(ambient, diffuse), specular);
-                        lighting[3] = 1;
-
-                        if(count < 40){
-                            // console.log(ambient);
-                            // console.log(diffuse);
-                            // console.log(dot(L,N));
-                            // console.log(specular);
-                            console.log(lighting);
-                            count++;
-                        }
-
-                        pixelBuffer.setColor(x, y, mult(min.triangle.color, lighting));
-                    } else {
-                        ambient[3] = 1;
-                        pixelBuffer.setColor(x, y, mult(min.triangle.color, ambient));
-                    }
                 }
             }
+
+            let ii = intersect;
+
+            if (min !== false) {
+                let position = ray.getPointAtT(min.t);
+                let lightRay = new Ray(ray.getPointAtT(min.t), lightSource.position);
+                let isShadow = false;
+                for (let i = 0; i < models.length && !isShadow; i++ ) {
+                    intersect = models[i].getIntersection(lightRay);
+                    if (intersect !== false && intersect.t > EPSILON){
+                        isShadow = true;
+                    }
+                }
+
+                let L = normalize( sub(lightSource.position, position) );
+                let N = normalize( min.triangle.normal );
+                let R = normalize( sub(scale(dot(L, N), scale(2 , N)), L) );
+                let V = normalize( sub(viewer.location, position));
+
+                let ambient = scale(min.ambientConstant, ambientIntensity);
+
+                let pre_refl_color;
+
+                if(!isShadow){
+                    let distance = sub(lightRay.endPoint, lightRay.startPoint);
+                    distance = Math.sqrt(Math.pow(distance[0],2) + Math.pow(distance[1],2) + Math.pow(distance[2],2));
+                    let distanceCoefficient = 1 / (a + (b * distance) + (c * Math.pow(distance, 2)));
+
+                    let diffuse = scale(min.diffusionConstant * distanceCoefficient * Math.max(-dot(L, N), 0.0), lightSource.intensity);
+
+                    let specular = scale(min.specularConstant * distanceCoefficient * Math.max(Math.pow(dot(R,V), min.shininess), 0.0), lightSource.intensity);
+
+                    if(count < 5){
+                        // console.log(ambient);
+                        // console.log(diffuse);
+                        // console.log(dot(L,N));
+                        // console.log(specular);
+                        count++;
+                    }
+
+                    let lighting = add(add(ambient, diffuse), specular);
+                    lighting[3] = 1;
+
+                    if(count < 40){
+                        // console.log(ambient);
+                        // console.log(diffuse);
+                        // console.log(dot(L,N));
+                        // console.log(specular);
+                        console.log(lighting);
+                        count++;
+                    }
+
+                    pre_refl_color = mult(min.triangle.color, lighting);
+                } else {
+                    ambient[3] = 1;
+                    pre_refl_color = mult(min.triangle.color, ambient);
+                }
+
+                let reflectivity = ii.shininess / 100;
+                // get reflection if appropriate
+                if ((reflectivity > 0) && (pre_refl_color) && (depth > 0)) {
+                    let refl_ray = ii.triangle.getReflectedRay(ray, ii.t);
+                    let reflection_color = getColorForRay(
+                        cc.getRayInCube(refl_ray),
+                        depth - 1
+                    );
+                    if (reflection_color) // nothing to reflect in clipping cube
+                        return pre_refl_color;
+                    //blend colors
+                    return 
+                        vec4(
+                            pre_refl_color[0] + (reflectivity * reflection_color[0]),
+                            pre_refl_color[1] + (reflectivity * reflection_color[1]),
+                            pre_refl_color[2] + (reflectivity * reflection_color[2]),
+                            pre_refl_color[3] //alpha stays same
+                        );
+
+                } else
+                    return pre_refl_color;
+            }
+        }
 
     // Draw buffer
 
