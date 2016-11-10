@@ -541,6 +541,7 @@ window.onload = function init()
 
                 let ambient = scale(min.ambientConstant, ambientIntensity);
 
+                let pre_refl_color = min.triangle.color;
                 let post_refl_color;
 
                 // get reflection if appropriate
