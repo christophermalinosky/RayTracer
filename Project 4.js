@@ -467,14 +467,15 @@ window.onload = function init()
 			Model.createCube(0, -2.5, -1, 1.5, vec4(0.0, 0.0, 1.0, 1.0), 1, 1, 1, 60, 0),
 			Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0), 1, 1, 1, 60, 0),
 			new Model([new Triangle([vec3(-3,-3,-3),vec3(3,-3,-3),vec3(-3,-3,4)],vec4(1,0,0,1)), new Triangle([vec3(-3,-3,4),vec3(3,-3,-3), vec3(3, -3, 4)],vec4(1,0,0,1))], 1, 1, 1, 60, 0.8),
-			new Model([new Triangle([vec3(-3,-3,4),vec3(3,-3,5),vec3(-3,3,4)],vec4(1,1,1,1)), new Triangle([vec3(-3,3,4),vec3(3,-3,5), vec3(3,3,5)],vec4(1,1,1,1))], 1, 1, 1, 60, 0.8),
-			Model.createSphere(-3, 1, -2, 1, 8, vec4(0.0, 1.0, 1.0, 1.0), 1, 1, 1, 60, 0)
+			new Model([new Triangle([vec3(-3,-3,5.5),vec3(3,-3,4),vec3(-3,3,5.5)],vec4(1,1,1,1)), new Triangle([vec3(-3,3,5.5),vec3(3,-3,4), vec3(3,3,4)],vec4(1,1,1,1))], 1, 1, 1, 60, 0.8),
+            new Model([new Triangle([vec3(3,-3,4),vec3(3,-3,-3),vec3(3,3,4)],vec4(0,0,0.8,1)), new Triangle([vec3(3,3,4),vec3(3,-3,-3),vec3(3,3,-3)],vec4(0,0,0.8,1))], 1, 1, 1, 60, 0.8),
+			Model.createSphere(-3, 1, -1.5, 1, 8, vec4(0.0, 1.0, 1.0, 1.0), 1, 1, 1, 60, 0)
 		];
 		console.log("Reflectivity:")
 		for (x in models)
 			console.log(models[x].reflectivity)
 
-		let lightSource = new PointLightSource(vec3(0,0,-1), vec4(1,1,1,1));
+		let lightSource = new PointLightSource(vec3(0,0,-3), vec4(1,1,1,1));
 
 		//for future debugging
 
@@ -544,7 +545,7 @@ window.onload = function init()
 
 	console.log("GET RAYS");
 
-		const REFLECTION_RECURSIVE_DEPTH = 1; // a cap on how many times we will bounce to make our reflections
+		const REFLECTION_RECURSIVE_DEPTH = 10; // a cap on how many times we will bounce to make our reflections
 
 		// console.log("orig ray 1 1", viewer.getLocation(), view.getCenter(1, 1))
 		// console.log("orig ray 3 10" , viewer.getLocation(), view.getCenter(3, 10))
