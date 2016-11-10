@@ -386,7 +386,9 @@ let b = 0.05;
 let c = 0.05;
 let ambientIntensity = vec4(0.2, 0.2, 0.2, 1.0 );
 
-var pixelBuffer = new PixelBuffer(width,height, vec4(0.0, 0.0, 0.0, 1.0));
+const EMPTY_COLOR = vec4(0.0, 0.0, 0.0, 1.0);
+
+var pixelBuffer = new PixelBuffer(width,height, EMPTY_COLOR);
 
 window.onload = function init()
 {
@@ -398,7 +400,7 @@ window.onload = function init()
     //  Configure WebGL
     //
     gl.viewport( 0, 0, canvas.width, canvas.height );
-    gl.clearColor( 1.0, 1.0, 1.0, 1.0 );
+    gl.clearColor( 1, 1, 1, 1 );
     
     //  Load shaders and initialize attribute buffers
     
@@ -553,20 +555,18 @@ window.onload = function init()
                         depth - 1
                     );
                     if (!reflection_color) // nothing to reflect in clipping cube
-                        post_refl_color = pre_refl_color;
-                    else {
-                        //blend colors
-                        post_refl_color = 
-                            vec4(
-                                ((1 - min.reflectivity) * pre_refl_color[0]) + 
-                                    (min.reflectivity * reflection_color[0]),
-                                ((1 - min.reflectivity) * pre_refl_color[1]) + 
-                                    (min.reflectivity * reflection_color[1]),
-                                ((1 - min.reflectivity) * pre_refl_color[2]) + 
-                                    (min.reflectivity * reflection_color[2]),
-                                pre_refl_color[3] //alpha stays same
-                            );
-                    }
+                        reflection_color = EMPTY_COLOR; // clear color is reflected if nothing to reflect
+                    //blend colors
+                    post_refl_color = 
+                        vec4(
+                            ((1 - min.reflectivity) * pre_refl_color[0]) + 
+                                (min.reflectivity * reflection_color[0]),
+                            ((1 - min.reflectivity) * pre_refl_color[1]) + 
+                                (min.reflectivity * reflection_color[1]),
+                            ((1 - min.reflectivity) * pre_refl_color[2]) + 
+                                (min.reflectivity * reflection_color[2]),
+                            pre_refl_color[3] //alpha stays same
+                        );
                 } else
                     post_refl_color = pre_refl_color;
 
