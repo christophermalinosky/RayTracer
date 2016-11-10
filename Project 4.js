@@ -413,7 +413,7 @@ window.onload = function init()
             Model.createCube(0, -2.5, -1, 1.5, vec4(0.0, 0.0, 1.0, 1.0), 1, 1, 1, 60, 0),
             Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0), 1, 1, 1, 60, 0),
             new Model([new Triangle([vec3(-3,-3,-3),vec3(3,-3,-3),vec3(-3,-3,4)],vec4(1,0,0,1)), new Triangle([vec3(-3,-3,4),vec3(3,-3,-3), vec3(3, -3, 4)],vec4(1,0,0,1))], 1, 1, 1, 60, 0),
-            new Model([new Triangle([vec3(-3,-3,4),vec3(3,-3,4),vec3(-3,3,4)],vec4(1,1,1,1)), new Triangle([vec3(-3,3,4),vec3(3,-3,4), vec3(3,3,4)],vec4(1,1,1,1))], 1, 1, 1, 60, 1)
+            new Model([new Triangle([vec3(-3,-3,4),vec3(3,-3,4),vec3(-3,3,4)],vec4(1,1,1,1)), new Triangle([vec3(-3,3,4),vec3(3,-3,4), vec3(3,3,4)],vec4(1,1,1,1))], 1, 1, 1, 60, 0.8)
             
             //,Model.createSphere(0, 2, 0, 3, 1, vec4(0.0, 1.0, 1.0, 1.0), 1, 1, 1, 60, 0)
         ];
@@ -503,10 +503,14 @@ window.onload = function init()
                     new Ray(viewer.getLocation(), view.getCenter(x, y))
                 );
                 if (ray === false) continue;
-                // console.log(JSON.stringify(ray));
-                let color =  getColorForRay(ray, REFLECTION_RECURSIVE_DEPTH)
-                if (color)
+
+                let color = getColorForRay(ray, REFLECTION_RECURSIVE_DEPTH)
+                if (color !== false){
+                    if(!color){
+                        console.log("wired", x, y, color);
+                    }
                     pixelBuffer.setColor(x, y, color);
+                }
             }
 
         function getColorForRay(ray, depth) {
@@ -570,23 +574,29 @@ window.onload = function init()
                         new Ray(refl_ray.startPoint, extended.endPoint),
                         depth - 1
                     );
-                    if (!reflection_color) // nothing to reflect in clipping cube
+                    if (!reflection_color){// nothing to reflect in clipping cube
+                        // console.log(reflection_color);
                         return pre_refl_color;
-                    console.log(reflection_color);
-                    //blend colors
-                    return 
-                        vec4(
-                            //((1 - min.reflectivity) * pre_refl_color[0]) + 
+                    }
+                    
+                    let return_color = vec4(
+                            ((1 - min.reflectivity) * pre_refl_color[0]) + 
                                 (min.reflectivity * reflection_color[0]),
-                            //((1 - min.reflectivity) * pre_refl_color[1]) + 
+                            ((1 - min.reflectivity) * pre_refl_color[1]) + 
                                 (min.reflectivity * reflection_color[1]),
-                            //((1 - min.reflectivity) * pre_refl_color[2]) + 
+                            ((1 - min.reflectivity) * pre_refl_color[2]) + 
                                 (min.reflectivity * reflection_color[2]),
                             pre_refl_color[3] //alpha stays same
                         );
 
-                } else
+                    //blend colors
+                    return return_color;
+
+                } else {
                     return pre_refl_color;
+                }
+            } else {
+                return false;
             }
         }
 
