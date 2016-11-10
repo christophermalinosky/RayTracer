@@ -134,12 +134,14 @@ class ClippingCube{
 
 //Models an object in the scene
 class Model{
-    constructor(triangles, ambientConstant, diffusionConstant, specularConstant, shininess){
+    constructor(triangles, ambientConstant, diffusionConstant, specularConstant, shininess, reflectivity){
         this.triangles = triangles;
         this.ambientConstant = ambientConstant;
         this.diffusionConstant = diffusionConstant;
         this.specularConstant = specularConstant;
         this.shininess = shininess;
+        this.reflectivity = reflectivity;
+        if (reflectivity) console.log("model refl", this.reflectivity)
     }
 
     getIntersection(ray){
@@ -155,15 +157,18 @@ class Model{
                 }
             }
         }
-        if (minimumT !== false)
+        if (minimumT !== false) {
+            //console.log(this.reflectivity)
             return {
                 triangle: minimumTriangle, 
                 t: minimumT,
                 ambientConstant: this.ambientConstant,
                 diffusionConstant: this.diffusionConstant,
                 specularConstant: this.specularConstant,
-                shininess: this.shininess
+                shininess: this.shininess,
+                reflectivity: this.reflectivity
             };
+        }
         else
             return false; // no intersection
     }
@@ -171,12 +176,12 @@ class Model{
     // Center at (x, y, z)
     // Uses detail level "d" (how many 4x subdivision)
     // r = radius
-    static createSphere(x, y, z, r, n, color, ambientConstant, diffusionConstant, specularConstant, shininess) {
-        return Model.createIcosahedron(r, color, ambientConstant, diffusionConstant, specularConstant, shininess);
+    static createSphere(x, y, z, r, n, color, ambientConstant, diffusionConstant, specularConstant, shininess, reflectivity) {
+        return Model.createIcosahedron(r, color, ambientConstant, diffusionConstant, specularConstant, shininess, reflectivity);
     }
 
     // create 12 sided regular polyhedron
-    static createIcosahedron(r, color, ambientConstant, diffusionConstant, specularConstant, shininess) {
+    static createIcosahedron(r, color, ambientConstant, diffusionConstant, specularConstant, shininess, reflectivity) {
         let a = r,
             b = r / PHI;
         let m = 
@@ -201,11 +206,11 @@ class Model{
                 new Triangle([ vec3( b, -a,  0),   vec3(0, -b, -a),  vec3( a,  0, -b), color ]),
                 new Triangle([ vec3(-b, -a,  0),   vec3(0, -b,  a),  vec3(-a,  0,  b), color ]),
                 new Triangle([ vec3(a,  0,  b),   vec3(0, -b,  a),   vec3(b, -a,  0), color ])
-            ], ambientConstant, diffusionConstant, specularConstant, shininess);
+            ], ambientConstant, diffusionConstant, specularConstant, shininess, reflectivity);
         return m;
     }
 
-    static createCube(x, y, z, s, color, ambientConstant, diffusionConstant, specularConstant, shininess) {
+    static createCube(x, y, z, s, color, ambientConstant, diffusionConstant, specularConstant, shininess, reflectivity) {
         let p = [
             null, // started with 1 not 0, adding this is easier than changing numbers below
             vec3(x+s, y, z),
@@ -231,7 +236,7 @@ class Model{
                 new Triangle([ p[2], p[6], p[7] ], color),
                 new Triangle([ p[1], p[4], p[8] ], color),
                 new Triangle([ p[1], p[8], p[5] ], color)
-            ], ambientConstant, diffusionConstant, specularConstant, shininess);
+            ], ambientConstant, diffusionConstant, specularConstant, shininess, reflectivity);
         return m;
         //what an amusing meme. it will return undefined if we do `return new Model(...);` but works fine when we do `let m = new Model(...); return m;`
     }
@@ -405,11 +410,16 @@ window.onload = function init()
     console.log("CREATING MODELS AND LIGHTS...");
 
         let models = [
-            Model.createCube(0, -2.5, -1, 1.5, vec4(0.0, 0.0, 1.0, 1.0), 1, 1, 1, 60),
-            Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0), 1, 1, 1, 60),
-            new Model([new Triangle([vec3(-3,-3,-3),vec3(3,-3,-3),vec3(-3,-3,4)],vec4(1,0,0,1)), new Triangle([vec3(-3,-3,4),vec3(3,-3,-3), vec3(3, -3, 4)],vec4(1,0,0,1))], 1, 1, 1, 60)
-            //,Model.createSphere(0, 2, 0, 3, 1, vec4(0.0, 1.0, 1.0, 1.0), 1, 1, 1, 60)
+            Model.createCube(0, -2.5, -1, 1.5, vec4(0.0, 0.0, 1.0, 1.0), 1, 1, 1, 60, 0),
+            Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0), 1, 1, 1, 60, 0),
+            new Model([new Triangle([vec3(-3,-3,-3),vec3(3,-3,-3),vec3(-3,-3,4)],vec4(1,0,0,1)), new Triangle([vec3(-3,-3,4),vec3(3,-3,-3), vec3(3, -3, 4)],vec4(1,0,0,1))], 1, 1, 1, 60, 0),
+            new Model([new Triangle([vec3(-3,-3,4),vec3(3,-3,4),vec3(-3,3,4)],vec4(1,1,1,1)), new Triangle([vec3(-3,3,4),vec3(3,-3,4), vec3(3,3,4)],vec4(1,1,1,1))], 1, 1, 1, 60, 1)
+            
+            //,Model.createSphere(0, 2, 0, 3, 1, vec4(0.0, 1.0, 1.0, 1.0), 1, 1, 1, 60, 0)
         ];
+        console.log("Reflectivity:")
+        for (x in models)
+            console.log(models[x].reflectivity)
 
         let lightSource = new PointLightSource(vec3(0,0,-1), vec4(1,1,1,1));
 
@@ -500,18 +510,18 @@ window.onload = function init()
             }
 
         function getColorForRay(ray, depth) {
-            let intersect, min = false;
+            let ii, min = false;
             for (let i = 0; i < models.length; i++ ) {
-                intersect = models[i].getIntersection(ray);
-                if (min === false && intersect !== false)
-                    min = intersect;
-                else if (intersect !== false) {
-                    if (intersect.t < min.t)
-                        min = intersect;
+                ii = models[i].getIntersection(ray);
+                if (min === false && ii !== false)
+                    min = ii;
+                else if (ii !== false) {
+                    if (ii.t < min.t)
+                        min = ii;
                 }
             }
 
-            let ii = intersect;
+            let intersect;
 
             if (min !== false) {
                 let position = ray.getPointAtT(min.t);
@@ -542,48 +552,36 @@ window.onload = function init()
 
                     let specular = scale(min.specularConstant * distanceCoefficient * Math.max(Math.pow(dot(R,V), min.shininess), 0.0), lightSource.intensity);
 
-                    if(count < 5){
-                        // console.log(ambient);
-                        // console.log(diffuse);
-                        // console.log(dot(L,N));
-                        // console.log(specular);
-                        count++;
-                    }
-
                     let lighting = add(add(ambient, diffuse), specular);
                     lighting[3] = 1;
 
-                    if(count < 40){
-                        // console.log(ambient);
-                        // console.log(diffuse);
-                        // console.log(dot(L,N));
-                        // console.log(specular);
-                        console.log(lighting);
-                        count++;
-                    }
-
                     pre_refl_color = mult(min.triangle.color, lighting);
+
                 } else {
                     ambient[3] = 1;
                     pre_refl_color = mult(min.triangle.color, ambient);
                 }
 
-                let reflectivity = ii.shininess / 100;
                 // get reflection if appropriate
-                if ((reflectivity > 0) && (pre_refl_color) && (depth > 0)) {
-                    let refl_ray = ii.triangle.getReflectedRay(ray, ii.t);
+                if ((min.reflectivity > 0) && (depth > 0)) {
+                    let refl_ray = min.triangle.getReflectedRay(ray, min.t);
+                    let extended = cc.getRayInCube(refl_ray);
                     let reflection_color = getColorForRay(
-                        cc.getRayInCube(refl_ray),
+                        new Ray(refl_ray.startPoint, extended.endPoint),
                         depth - 1
                     );
-                    if (reflection_color) // nothing to reflect in clipping cube
+                    if (!reflection_color) // nothing to reflect in clipping cube
                         return pre_refl_color;
+                    console.log(reflection_color);
                     //blend colors
                     return 
                         vec4(
-                            pre_refl_color[0] + (reflectivity * reflection_color[0]),
-                            pre_refl_color[1] + (reflectivity * reflection_color[1]),
-                            pre_refl_color[2] + (reflectivity * reflection_color[2]),
+                            //((1 - min.reflectivity) * pre_refl_color[0]) + 
+                                (min.reflectivity * reflection_color[0]),
+                            //((1 - min.reflectivity) * pre_refl_color[1]) + 
+                                (min.reflectivity * reflection_color[1]),
+                            //((1 - min.reflectivity) * pre_refl_color[2]) + 
+                                (min.reflectivity * reflection_color[2]),
                             pre_refl_color[3] //alpha stays same
                         );
 
@@ -610,6 +608,11 @@ window.onload = function init()
     gl.enableVertexAttribArray( vPosition );
 
     colorLoc = gl.getUniformLocation (program, "color");
+
+
+        console.log("Reflectivity:")
+        for (x in models)
+            console.log(models[x].reflectivity)
 
     render();
 };
