@@ -444,242 +444,6 @@ var pixelBuffer = new PixelBuffer(width,height, EMPTY_COLOR);
 
 window.onload = function init()
 {
-    let canvas = document.getElementById( "gl-canvas" );
-    gl = WebGLUtils.setupWebGL( canvas );
-    if ( !gl ) { alert( "WebGL isn't available" ); }
-
-    //
-    //  Configure WebGL
-    //
-    gl.viewport( 0, 0, canvas.width, canvas.height );
-    gl.clearColor( 1.0, 1.0, 1.0, 1.0 );
-    
-    //  Load shaders and initialize attribute buffers
-    
-    let program = initShaders( gl, "vertex-shader", "fragment-shader" );
-    gl.useProgram( program );
-
-    // Create scene
-
-    console.log("CREATING MODELS AND LIGHTS...");
-
-        let models = [
-            Model.createCube(0, -2.5, -1, 1.5, vec4(0.0, 0.0, 1.0, 1.0), 1, 1, 1, 60, 0),
-            Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0), 1, 1, 1, 60, 0),
-            new Model([new Triangle([vec3(-3,-3,-3),vec3(3,-3,-3),vec3(-3,-3,4)],vec4(1,0,0,1)), new Triangle([vec3(-3,-3,4),vec3(3,-3,-3), vec3(3, -3, 4)],vec4(1,0,0,1))], 1, 1, 1, 60, 0),
-            new Model([new Triangle([vec3(-3,-3,4),vec3(3,-3,4),vec3(-3,3,4)],vec4(1,1,1,1)), new Triangle([vec3(-3,3,4),vec3(3,-3,4), vec3(3,3,4)],vec4(1,1,1,1))], 1, 1, 1, 60, 0.8)
-            
-            //,Model.createSphere(0, 2, 0, 3, 1, vec4(0.0, 1.0, 1.0, 1.0), 1, 1, 1, 60, 0)
-        ];
-        console.log("Reflectivity:")
-        for (x in models)
-            console.log(models[x].reflectivity)
-
-        let lightSource = new PointLightSource(vec3(0,0,-1), vec4(1,1,1,1));
-
-        //for future debugging
-
-        // console.log("\tModels: ", models);
-
-        console.log("Logic check: ", models[0].getIntersection(new Ray(vec3(-.5,0.5,0.5), vec3(0.5,0.5,0.5))));
-
-    console.log("CREATING VIEWER, VIEWPANEL...");
-
-        //Todo: some fancy logic of determining a good view panel ->  Viewer.createViewPanel()
-        let viewer = new Viewer(vec3(0, 0, -10));
-        let view = new ViewPanel(
-            vec3(-2.5, 2.5, -5), vec3(2.5, 2.5, -5), vec3(-2.5, -2.5, -5),
-            pixelBuffer.getHeight(), pixelBuffer.getWidth()
-        );
-
-        //for future debugging
-        // console.log(view.getCenter(250,250));
-        // console.log(viewer.getLocation());
-
-        // console.log("\tViewer: ", viewer);
-        // console.log("\tViewPanel: ", view);
-
-        // let test = new ViewPanel(
-        //     vec3(0, 1, 0), vec3(1, 1, 0), vec3(0, 0, 0),
-        //     10,10
-        // );
-        // console.log(test.getCenter(9,9));
-        // console.log(view.getCenter(249,249));
-
-
-    console.log("CREATING CLIPPING CUBE...");
-
-        let cc = new ClippingCube(-12, -10, -4.5, 30);
-        // console.log(cc);
-
-        //Debugging
-        // let testRay = new Ray(vec3(-1,-1,-1), vec3(-0.5,-0.5,-0.5));
-        // console.log(testRay);
-        // let testCC = new ClippingCube(0,0,0,2);
-        // console.log(testCC);
-        // console.log(testCC.getRayInCube(testRay));
-
-        // Tests Triangle
-        // let testTriangle = new Triangle([vec3(0,0,0),vec3(1,0,0),vec3(0.5,1,0)],vec4(0,0,1,1));
-        // let testRay = new Ray(vec3(0.5,1,-0.5), vec3(0.5,1, 0.5));
-        // console.log("Test 1: ", testTriangle.getIntersectionT(testRay));
-        // testRay = new Ray(vec3(0.5,1.01,-0.5), vec3(0.5,1.01, 0.5));
-        // console.log("Test 1: ", testTriangle.getIntersectionT(testRay));
-        // testRay = new Ray(vec3(0.501,1,-0.5), vec3(0.501,1, 0.5));
-        // console.log("Test 1: ", testTriangle.getIntersectionT(testRay));
-
-
-        // let testModel = new Model([new Triangle([vec3(0,0,0),vec3(1,0,0),vec3(0.5,1,0)],vec4(0,0,1,1))]);
-        // let testRay = new Ray(vec3(0.5,1,-0.5), vec3(0.5,1, 0.5));
-        // console.log("Test 1: ", testModel.getIntersection(testRay));
-        // testRay = new Ray(vec3(0.5,1.01,-0.5), vec3(0.5,1.01, 0.5));
-        // console.log("Test 1: ", testModel.getIntersection(testRay));
-        // testRay = new Ray(vec3(0.501,1,-0.5), vec3(0.501,1, 0.5));
-        // console.log("Test 1: ", testModel.getIntersection(testRay));
-        // testRay = new Ray(vec3(0.499,1,-0.5), vec3(0.499,1, 0.5));
-        // console.log("Test 1: ", testModel.getIntersection(testRay));
-        // testRay = new Ray(vec3(0,0,-0.5), vec3(0,0, 0.5));
-        // console.log("Test 2: ", testModel.getIntersection(testRay));
-        // testRay = new Ray(vec3(0.5,0,-0.5), vec3(0.5,0, 0.5));
-        // console.log("Test 3: ", testModel.getIntersection(testRay));
-
-    console.log("GET RAYS");
-
-        const REFLECTION_RECURSIVE_DEPTH = 1; // a cap on how many times we will bounce to make our reflections
-
-        // console.log("orig ray 1 1", viewer.getLocation(), view.getCenter(1, 1))
-        // console.log("orig ray 3 10" , viewer.getLocation(), view.getCenter(3, 10))
-        //Todo: rendering
-        let count = 0;
-        for (let x = 0; x < pixelBuffer.getWidth(); x++)
-            for (let y = 0; y < pixelBuffer.getHeight(); y++) {
-                let ray = cc.getRayInCube(
-                    new Ray(viewer.getLocation(), view.getCenter(x, y))
-                );
-                if (ray === false) continue;
-
-                let color = getColorForRay(ray, REFLECTION_RECURSIVE_DEPTH)
-                if (color !== false){
-                    if(!color){
-                        console.log("wired", x, y, color);
-                    }
-                    pixelBuffer.setColor(x, y, color);
-                }
-            }
-
-        function getColorForRay(ray, depth) {
-            let ii, min = false;
-            for (let i = 0; i < models.length; i++ ) {
-                ii = models[i].getIntersection(ray);
-                if (min === false && ii !== false)
-                    min = ii;
-                else if (ii !== false) {
-                    if (ii.t < min.t)
-                        min = ii;
-                }
-            }
-
-            let intersect;
-
-            if (min !== false) {
-                let position = ray.getPointAtT(min.t);
-                let lightRay = new Ray(ray.getPointAtT(min.t), lightSource.position);
-                let isShadow = false;
-                for (let i = 0; i < models.length && !isShadow; i++ ) {
-                    intersect = models[i].getIntersection(lightRay);
-                    if (intersect !== false && intersect.t > EPSILON){
-                        isShadow = true;
-                    }
-                }
-
-                let L = normalize( sub(lightSource.position, position) );
-                let N = normalize( min.triangle.normal );
-                let R = normalize( sub(scale(dot(L, N), scale(2 , N)), L) );
-                let V = normalize( sub(viewer.location, position));
-
-                let ambient = scale(min.ambientConstant, ambientIntensity);
-
-                let pre_refl_color;
-
-                if(!isShadow){
-                    let distance = sub(lightRay.endPoint, lightRay.startPoint);
-                    distance = Math.sqrt(Math.pow(distance[0],2) + Math.pow(distance[1],2) + Math.pow(distance[2],2));
-                    let distanceCoefficient = 1 / (a + (b * distance) + (c * Math.pow(distance, 2)));
-
-                    let diffuse = scale(min.diffusionConstant * distanceCoefficient * Math.max(-dot(L, N), 0.0), lightSource.intensity);
-
-                    let specular = scale(min.specularConstant * distanceCoefficient * Math.max(Math.pow(dot(R,V), min.shininess), 0.0), lightSource.intensity);
-
-                    let lighting = add(add(ambient, diffuse), specular);
-                    lighting[3] = 1;
-
-                    pre_refl_color = mult(min.triangle.color, lighting);
-
-                } else {
-                    ambient[3] = 1;
-                    pre_refl_color = mult(min.triangle.color, ambient);
-                }
-
-                // get reflection if appropriate
-                if ((min.reflectivity > 0) && (depth > 0)) {
-                    let refl_ray = min.triangle.getReflectedRay(ray, min.t);
-                    let extended = cc.getRayInCube(refl_ray);
-                    let reflection_color = getColorForRay(
-                        new Ray(refl_ray.startPoint, extended.endPoint),
-                        depth - 1
-                    );
-                    if (!reflection_color){// nothing to reflect in clipping cube
-                        // console.log(reflection_color);
-                        return pre_refl_color;
-                    }
-                    
-                    let return_color = vec4(
-                            ((1 - min.reflectivity) * pre_refl_color[0]) + 
-                                (min.reflectivity * reflection_color[0]),
-                            ((1 - min.reflectivity) * pre_refl_color[1]) + 
-                                (min.reflectivity * reflection_color[1]),
-                            ((1 - min.reflectivity) * pre_refl_color[2]) + 
-                                (min.reflectivity * reflection_color[2]),
-                            pre_refl_color[3] //alpha stays same
-                        );
-
-                    //blend colors
-                    return return_color;
-
-                } else {
-                    return pre_refl_color;
-                }
-            } else {
-                return false;
-            }
-        }
-
-    // Draw buffer
-
-    console.log("PIXELBUFFER DRAWING...");
-    pixelBuffer.draw(points)
-
-    // Load the data into the GPU
-    
-    let bufferId = gl.createBuffer();
-    gl.bindBuffer( gl.ARRAY_BUFFER, bufferId );
-    gl.bufferData( gl.ARRAY_BUFFER, flatten(points), gl.STATIC_DRAW );
-
-    // Associate our shader variables with our data buffer
-    
-    let vPosition = gl.getAttribLocation( program, "vPosition" );
-    gl.vertexAttribPointer( vPosition, 2, gl.FLOAT, false, 0, 0 );
-    gl.enableVertexAttribArray( vPosition );
-
-    colorLoc = gl.getUniformLocation (program, "color");
-
-
-        console.log("Reflectivity:")
-        for (x in models)
-            console.log(models[x].reflectivity)
-
-    render();
-
 	let canvas = document.getElementById( "gl-canvas" );
 	gl = WebGLUtils.setupWebGL( canvas );
 	if ( !gl ) { alert( "WebGL isn't available" ); }
@@ -702,8 +466,8 @@ window.onload = function init()
 		let models = [
 			Model.createCube(0, -2.5, -1, 1.5, vec4(0.0, 0.0, 1.0, 1.0), 1, 1, 1, 60, 0),
 			Model.createCube(-1, 2, -1, 1.5, vec4(0.0, 1.0, 0.0, 1.0), 1, 1, 1, 60, 0),
-			new Model([new Triangle([vec3(-3,-3,-3),vec3(3,-3,-3),vec3(-3,-3,4)],vec4(1,0,0,1)), new Triangle([vec3(-3,-3,4),vec3(3,-3,-3), vec3(3, -3, 4)],vec4(1,0,0,1))], 1, 1, 1, 60, 0),
-			new Model([new Triangle([vec3(-3,-3,4),vec3(3,-3,4),vec3(-3,3,4)],vec4(1,1,1,1)), new Triangle([vec3(-3,3,4),vec3(3,-3,4), vec3(3,3,4)],vec4(1,1,1,1))], 1, 1, 1, 60, 1),
+			new Model([new Triangle([vec3(-3,-3,-3),vec3(3,-3,-3),vec3(-3,-3,4)],vec4(1,0,0,1)), new Triangle([vec3(-3,-3,4),vec3(3,-3,-3), vec3(3, -3, 4)],vec4(1,0,0,1))], 1, 1, 1, 60, 0.8),
+			new Model([new Triangle([vec3(-3,-3,4),vec3(3,-3,5),vec3(-3,3,4)],vec4(1,1,1,1)), new Triangle([vec3(-3,3,4),vec3(3,-3,5), vec3(3,3,5)],vec4(1,1,1,1))], 1, 1, 1, 60, 0.8),
 			Model.createSphere(-3, 1, -2, 1, 8, vec4(0.0, 1.0, 1.0, 1.0), 1, 1, 1, 60, 0)
 		];
 		console.log("Reflectivity:")
@@ -837,13 +601,15 @@ window.onload = function init()
 				if ((min.reflectivity > 0) && (depth > 0)) {
 					let refl_ray = min.triangle.getReflectedRay(ray, min.t);
 					let extended = cc.getRayInCube(refl_ray);
+                    let exact  = new Ray(refl_ray.startPoint, extended.endPoint);
 					let reflection_color = getColorForRay(
-						new Ray(refl_ray.startPoint, extended.endPoint),
+						new Ray(exact.getPointAtT(EPSILON), exact.endPoint),
 						depth - 1
 					);
 					if (!reflection_color) // nothing to reflect in clipping cube
-						reflection_color = EMPTY_COLOR; // clear color is reflected if nothing to reflect
-					//blend colors
+						post_refl_color = pre_refl_color; // clear color is reflected if nothing to reflect
+					else {
+                    //blend colors
 					post_refl_color = 
 						vec4(
 							((1 - min.reflectivity) * pre_refl_color[0]) + 
@@ -854,6 +620,7 @@ window.onload = function init()
 								(min.reflectivity * reflection_color[2]),
 							pre_refl_color[3] //alpha stays same
 						);
+                    }
 				} else
 					post_refl_color = pre_refl_color;
 
