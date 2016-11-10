@@ -541,9 +541,35 @@ window.onload = function init()
 
                 let ambient = scale(min.ambientConstant, ambientIntensity);
 
-                let pre_refl_color;
+                let post_refl_color;
 
-                if(!isShadow){
+                // get reflection if appropriate
+                if ((min.reflectivity > 0) && (depth > 0)) {
+                    let refl_ray = min.triangle.getReflectedRay(ray, min.t);
+                    let extended = cc.getRayInCube(refl_ray);
+                    let reflection_color = getColorForRay(
+                        new Ray(refl_ray.startPoint, extended.endPoint),
+                        depth - 1
+                    );
+                    if (!reflection_color) // nothing to reflect in clipping cube
+                        post_refl_color = pre_refl_color;
+                    else {
+                        //blend colors
+                        post_refl_color = 
+                            vec4(
+                                ((1 - min.reflectivity) * pre_refl_color[0]) + 
+                                    (min.reflectivity * reflection_color[0]),
+                                ((1 - min.reflectivity) * pre_refl_color[1]) + 
+                                    (min.reflectivity * reflection_color[1]),
+                                ((1 - min.reflectivity) * pre_refl_color[2]) + 
+                                    (min.reflectivity * reflection_color[2]),
+                                pre_refl_color[3] //alpha stays same
+                            );
+                    }
+                } else
+                    post_refl_color = pre_refl_color;
+
+                if(!isShadow) {
                     let distance = sub(lightRay.endPoint, lightRay.startPoint);
                     distance = Math.sqrt(Math.pow(distance[0],2) + Math.pow(distance[1],2) + Math.pow(distance[2],2));
                     let distanceCoefficient = 1 / (a + (b * distance) + (c * Math.pow(distance, 2)));
@@ -555,38 +581,12 @@ window.onload = function init()
                     let lighting = add(add(ambient, diffuse), specular);
                     lighting[3] = 1;
 
-                    pre_refl_color = mult(min.triangle.color, lighting);
+                    return mult(post_refl_color, lighting);
 
                 } else {
                     ambient[3] = 1;
-                    pre_refl_color = mult(min.triangle.color, ambient);
+                    return mult(post_refl_color, ambient);
                 }
-
-                // get reflection if appropriate
-                if ((min.reflectivity > 0) && (depth > 0)) {
-                    let refl_ray = min.triangle.getReflectedRay(ray, min.t);
-                    let extended = cc.getRayInCube(refl_ray);
-                    let reflection_color = getColorForRay(
-                        new Ray(refl_ray.startPoint, extended.endPoint),
-                        depth - 1
-                    );
-                    if (!reflection_color) // nothing to reflect in clipping cube
-                        return pre_refl_color;
-                    console.log(reflection_color);
-                    //blend colors
-                    return 
-                        vec4(
-                            //((1 - min.reflectivity) * pre_refl_color[0]) + 
-                                (min.reflectivity * reflection_color[0]),
-                            //((1 - min.reflectivity) * pre_refl_color[1]) + 
-                                (min.reflectivity * reflection_color[1]),
-                            //((1 - min.reflectivity) * pre_refl_color[2]) + 
-                                (min.reflectivity * reflection_color[2]),
-                            pre_refl_color[3] //alpha stays same
-                        );
-
-                } else
-                    return pre_refl_color;
             }
         }
 
