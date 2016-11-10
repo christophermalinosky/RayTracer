@@ -475,7 +475,7 @@ window.onload = function init()
 		for (x in models)
 			console.log(models[x].reflectivity)
 
-		let lightSource = new PointLightSource(vec3(0,0,-3), vec4(1,1,1,1));
+		let lightSources = [new PointLightSource(vec3(0,0,-3), vec4(1,1,1,1)), new PointLightSource(vec3(2,0,2), vec4(1,1,1,1))];
 
 		//for future debugging
 
@@ -575,75 +575,74 @@ window.onload = function init()
 				}
 			}
 
-			let intersect;
+            if (min !== false) {
+                let pre_refl_color = min.triangle.color;
+                let intersect, post_refl_color;
 
-			if (min !== false) {
-				let position = ray.getPointAtT(min.t);
-				let lightRay = new Ray(ray.getPointAtT(min.t), lightSource.position);
-				let isShadow = false;
-				for (let i = 0; i < models.length && !isShadow; i++ ) {
-					intersect = models[i].getIntersection(lightRay);
-					if (intersect !== false && intersect.t > EPSILON){
-						isShadow = true;
-					}
-				}
-
-				let L = normalize( sub(lightSource.position, position) );
-				let N = normalize( min.triangle.normal );
-				let R = normalize( sub(scale(dot(L, N), scale(2 , N)), L) );
-				let V = normalize( sub(viewer.location, position));
-
-				let ambient = scale(min.ambientConstant, ambientIntensity);
-
-				let pre_refl_color = min.triangle.color;
-				let post_refl_color;
-
-				// get reflection if appropriate
-				if ((min.reflectivity > 0) && (depth > 0)) {
-					let refl_ray = min.triangle.getReflectedRay(ray, min.t);
-					let extended = cc.getRayInCube(refl_ray);
+                // get reflection if appropriate
+                if ((min.reflectivity > 0) && (depth > 0)) {
+                    let refl_ray = min.triangle.getReflectedRay(ray, min.t);
+                    let extended = cc.getRayInCube(refl_ray);
                     let exact  = new Ray(refl_ray.startPoint, extended.endPoint);
-					let reflection_color = getColorForRay(
-						new Ray(exact.getPointAtT(EPSILON), exact.endPoint),
-						depth - 1
-					);
-					if (!reflection_color) // nothing to reflect in clipping cube
-						post_refl_color = pre_refl_color; // clear color is reflected if nothing to reflect
-					else {
+                    let reflection_color = getColorForRay(
+                        new Ray(exact.getPointAtT(EPSILON), exact.endPoint),
+                        depth - 1
+                    );
+                    if (!reflection_color) // nothing to reflect in clipping cube
+                        post_refl_color = pre_refl_color; // clear color is reflected if nothing to reflect
+                    else {
                     //blend colors
-					post_refl_color = 
-						vec4(
-							((1 - min.reflectivity) * pre_refl_color[0]) + 
-								(min.reflectivity * reflection_color[0]),
-							((1 - min.reflectivity) * pre_refl_color[1]) + 
-								(min.reflectivity * reflection_color[1]),
-							((1 - min.reflectivity) * pre_refl_color[2]) + 
-								(min.reflectivity * reflection_color[2]),
-							pre_refl_color[3] //alpha stays same
-						);
+                    post_refl_color = 
+                        vec4(
+                            ((1 - min.reflectivity) * pre_refl_color[0]) + 
+                                (min.reflectivity * reflection_color[0]),
+                            ((1 - min.reflectivity) * pre_refl_color[1]) + 
+                                (min.reflectivity * reflection_color[1]),
+                            ((1 - min.reflectivity) * pre_refl_color[2]) + 
+                                (min.reflectivity * reflection_color[2]),
+                            pre_refl_color[3] //alpha stays same
+                        );
                     }
-				} else
-					post_refl_color = pre_refl_color;
+                } else
+                    post_refl_color = pre_refl_color;
 
-				if(!isShadow) {
-					let distance = sub(lightRay.endPoint, lightRay.startPoint);
-					distance = Math.sqrt(Math.pow(distance[0],2) + Math.pow(distance[1],2) + Math.pow(distance[2],2));
-					let distanceCoefficient = 1 / (a + (b * distance) + (c * Math.pow(distance, 2)));
+                let totalLighting = scale(min.ambientConstant, ambientIntensity);
 
-					let diffuse = scale(min.diffusionConstant * distanceCoefficient * Math.max(-dot(L, N), 0.0), lightSource.intensity);
+                for(let j = 0; j < lightSources.length; j++){
+                    let lightSource = lightSources[j];
+    				let position = ray.getPointAtT(min.t);
+    				let lightRay = new Ray(ray.getPointAtT(min.t), lightSource.position);
+    				let isShadow = false;
+    				for (let i = 0; i < models.length && !isShadow; i++ ) {
+    					intersect = models[i].getIntersection(lightRay);
+    					if (intersect !== false && intersect.t > EPSILON){
+    						isShadow = true;
+    					}
+    				}
 
-					let specular = scale(min.specularConstant * distanceCoefficient * Math.max(Math.pow(dot(R,V), min.shininess), 0.0), lightSource.intensity);
+    				let L = normalize( sub(lightSource.position, position) );
+    				let N = normalize( min.triangle.normal );
+    				let R = normalize( sub(scale(dot(L, N), scale(2 , N)), L) );
+    				let V = normalize( sub(viewer.location, position));
 
-					let lighting = add(add(ambient, diffuse), specular);
-					lighting[3] = 1;
+    				if(!isShadow) {
+    					let distance = sub(lightRay.endPoint, lightRay.startPoint);
+    					distance = Math.sqrt(Math.pow(distance[0],2) + Math.pow(distance[1],2) + Math.pow(distance[2],2));
+    					let distanceCoefficient = 1 / (a + (b * distance) + (c * Math.pow(distance, 2)));
 
-					return mult(post_refl_color, lighting);
+    					let diffuse = scale(min.diffusionConstant * distanceCoefficient * Math.max(-dot(L, N), 0.0), lightSource.intensity);
 
-				} else {
-					ambient[3] = 1;
-					return mult(post_refl_color, ambient);
-				}
-			}
+    					let specular = scale(min.specularConstant * distanceCoefficient * Math.max(Math.pow(dot(R,V), min.shininess), 0.0), lightSource.intensity);
+
+    					let lighting = add(diffuse, specular);
+
+                        totalLighting = add(totalLighting, lighting);
+    				}
+                }
+                totalLighting[3] = 1;
+
+                return mult(post_refl_color, totalLighting);
+    		}
 		}
 
 	// Draw buffer
