@@ -1,3 +1,5 @@
+//Ray Tracer
+
 // Define floating point EPSILON value
 const EPSILON = 0.000001;
 const PHI = (1 + Math.sqrt(5))/2;
