@@ -1,4 +1,5 @@
 //Ray Tracer
+//Christopher Malinosky and Andrew McKee
 
 // Define floating point EPSILON value
 const EPSILON = 0.000001;
